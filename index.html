@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>X-O Play with Friends</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; text-align: center; background: #121212; color: white; margin: 0; padding: 20px; }
+    h1 { color: #00ff88; }
+.board { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; margin: 20px auto; width: 310px; }
+.cell { width: 100px; height: 100px; background: #1e1e1e; border: 2px solid #00ff88; font-size: 60px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.cell:hover { background: #2a2a2a; }
+    button { background: #00ff88; color: black; border: none; padding: 12px 20px; font-size: 16px; margin: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    input { padding: 10px; font-size: 16px; width: 220px; text-align: center; border-radius: 8px; border: none; }
+    #status { font-size: 18px; margin: 15px; height: 40px; }
+    #roomCode { font-size: 20px; color: #00ff88; font-weight: bold; user-select: all; }
+  </style>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <h1>X-O Play with Friends ❌⭕</h1>
+
+  <div id="menu">
+    <button onclick="createRoom()">Create Room</button>
+    <p>Illana</p>
+    <input type="text" id="joinInput" placeholder="Room Code Inga Podu">
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
+
+  <div id="game" style="display:none;">
+    <p>Room Code: <span id="roomCode"></span></p>
+    <p id="status">Connecting...</p>
+    <div class="board" id="board"></div>
+    <button onclick="location.reload()">New Game</button>
+  </div>
+
+  <script>
+    let peer, conn, player, currentPlayer = 'X';
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let gameActive = false;
+
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.addEventListener('click', () => makeMove(i));
+      boardEl.appendChild(cell);
+    }
+
+    function createRoom() {
+      player = 'X';
+      const roomId = 'xo-' + Math.random().toString(36).substring(2, 9);
+      document.getElementById('roomCode').innerText = roomId;
+      showGame();
+      statusEl.innerText = 'Room created! Friend kooda code ah share pannu';
+
+      peer = new Peer(roomId);
+      peer.on('connection', c => {
+        conn = c;
+        setupConnection();
+        gameActive = true;
+        statusEl.innerText = 'Friend connect aayitan! Un Turn da';
+      });
+      peer.on('error', err => statusEl.innerText = 'Error da: ' + err.type);
+    }
+
+    function joinRoom() {
+      player = 'O';
+      const roomId = document.getElementById('joinInput').value.trim();
+      if (!roomId) return alert('Room code podu da');
+      document.getElementById('roomCode').innerText = roomId;
+      showGame();
+      statusEl.innerText = 'Host kooda connect aagura...';
+
+      peer = new Peer();
+      peer.on('open', () => {
+        conn = peer.connect(roomId);
+        setupConnection();
+      });
+      peer.on('error', err => statusEl.innerText = 'Error da: Room code thappu pola');
+    }
+
+    function showGame() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+    }
+
+    function setupConnection() {
+      conn.on('open', () => {
+        gameActive = true;
+        if (player === 'O') statusEl.innerText = 'Connected! Host Turn...';
+      });
+      conn.on('data', data => {
+        board = data.board;
+        currentPlayer = data.currentPlayer;
+        gameActive = data.gameActive;
+        updateBoard();
+        updateStatus();
+      });
+      conn.on('close', () => {
+        gameActive = false;
+        statusEl.innerText = 'Friend disconnect aayitan 😭 New Game amuku';
+      });
+    }
+
+    function makeMove(index) {
+      if (!gameActive || board[index]!== '' || currentPlayer!== player) return;
+      board[index] = player;
+      currentPlayer = player === 'X'? 'O' : 'X';
+      const winner = checkWinner();
+      const draw =!board.includes('');
+      if (winner || draw) gameActive = false;
+
+      if (conn && conn.open) {
+        conn.send({ board, currentPlayer, gameActive });
+      }
+      updateBoard();
+      updateStatus();
+    }
+
+    function updateBoard() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach((cell, i) => {
+        cell.innerText = board[i];
+        cell.style.color = board[i] === 'X'? '#ff4757' : '#00ff88';
+      });
+    }
+
+    function updateStatus() {
+      const winner = checkWinner();
+      if (winner) {
+        statusEl.innerText = winner === player? 'Dei Nee Jeyichita! 🎉' : 'Un friend jeyichitan 😭';
+      } else if (!board.includes('')) {
+        statusEl.innerText = 'Draw da! New Game amuku';
+      } else {
+        statusEl.innerText = currentPlayer === player? 'Un Turn da' : 'Friend Turn...';
+      }
+    }
+
+    function checkWinner() {
+      const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for (let w of wins) {
+        if (board[w[0]] && board[w[0]] === board[w[1]] && board[w[0]] === board[w[2]]) return board[w[0]];
+      }
+      return null;
+    }
+  </script>
+</body>
+</html>

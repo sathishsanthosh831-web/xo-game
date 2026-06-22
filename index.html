@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>X-O Number Room with Voice</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      background: #121212; 
+      color: white; 
+      margin: 0; 
+      padding: 20px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    h1 { 
+      color: #00ff88; 
+      text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+      margin-top: 10px;
+    }
+    #menu {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      max-width: 320px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    p { font-size: 16px; color: #b3b3b3; margin: 10px 0; }
+    .board { 
+      display: grid; 
+      grid-template-columns: repeat(3, 90px); 
+      gap: 8px; 
+      margin: 20px auto; 
+      width: 286px; 
+    }
+    .cell { 
+      width: 90px; 
+      height: 90px; 
+      background: #1a1a1a; 
+      border: 2px solid #00ff88; 
+      font-size: 50px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      border-radius: 8px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+      transition: all 0.15s ease;
+      font-weight: bold;
+    }
+    .cell:hover {
+      background: #252525;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+    }
+    button { 
+      background: #00ff88; 
+      color: black; 
+      border: none; 
+      padding: 12px 25px; 
+      font-size: 16px; 
+      margin: 10px 0; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: bold; 
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+    }
+    .control-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      max-width: 200px;
+      margin: 15px auto 0 auto;
+    }
+    .restart-btn {
+      background: #ffd700;
+      color: black;
+      margin: 0;
+    }
+    .restart-btn:hover {
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+    .exit-btn {
+      background: #ff4757;
+      color: white;
+      margin: 0;
+    }
+    .exit-btn:hover {
+      box-shadow: 0 0 15px rgba(255, 71, 87, 0.5);
+    }
+    
+    /* NEW AUDIO VOICE CHAT SLOCK LOOK */
+    .mic-btn {
+      background: #2f3542;
+      color: #ff4757;
+      border: 2px solid #ff4757;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .mic-btn.active {
+      background: #2ed573;
+      color: black;
+      border: 2px solid #2ed573;
+      box-shadow: 0 0 15px rgba(46, 213, 115, 0.4);
+    }
+
+    input { 
+      padding: 12px; 
+      font-size: 20px; 
+      width: 100%; 
+      text-align: center; 
+      border-radius: 8px; 
+      border: 2px solid #333; 
+      background: #111;
+      color: white;
+      letter-spacing: 5px; 
+      box-sizing: border-box;
+      outline: none;
+      margin-top: 5px;
+    }
+    input:focus {
+      border-color: #00ff88;
+    }
+    #game {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      width: 100%;
+      max-width: 340px;
+      box-sizing: border-box;
+      margin-top: 15px;
+    }
+    #status { 
+      font-size: 16px; 
+      margin: 15px 0; 
+      min-height: 40px; 
+      font-weight: bold;
+      color: #ffd700;
+    }
+    #roomCode { 
+      font-size: 36px; 
+      color: #00ff88; 
+      font-weight: bold; 
+      letter-spacing: 6px; 
+      margin: 5px 0;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    }
+  </style>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <h1>X-O Game ❌⭕</h1>
+
+  <div id="menu">
+    <button onclick="createRoom()">Create Room</button>
+    <p style="margin: 15px 0; font-weight: bold; color: #555;">─ OR ─</p>
+    <input type="number" id="joinInput" placeholder="1234" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);">
+    <button onclick="joinRoom()" style="background: #00d2ff; color: black;">Join Room</button>
+  </div>
+
+  <div id="game" style="display:none;">
+    <p style="margin-bottom: 0;">Room Number</p>
+    <p id="roomCode"></p>
+    <div id="status">Connecting...</div>
+    <div class="board" id="board"></div>
+    
+    <div class="control-btns">
+      <button onclick="requestRestart()" class="restart-btn">Restart Game</button>
+      <button onclick="location.reload()" class="exit-btn">Exit Game</button>
+      <button id="micBtn" onclick="toggleMicSystem()" class="mic-btn">🎙️ Mic: OFF</button>
+    </div>
+  </div>
+
+  <script>
+    const securityAlert = "Inspect panni pakka vandhingala? Aiyayo en owner romba moola karanga! ungalukku oru option tharan, my owner insta ID tharen: @highpet01. Avan kitta poi vangikonga, but some amount keppan. Avan kitta 'megu' nu sollunga discount pannuvan. Naan dhan sonnan nu sollidathinga! 🙏🤫";
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); alert(securityAlert); });
+    document.onkeydown = function(e) {
+      if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) || (e.ctrlKey && e.keyCode == 85)) {
+        alert(securityAlert); return false;
+      }
+    };
+    setInterval(function() {
+      const startT = +new Date();
+      debugger; 
+      const endT = +new Date();
+      if (endT - startT > 100) { alert(securityAlert); window.location.reload(); }
+    }, 250);
+  </script>
+
+  <script>
+    let peer, conn, player, currentPlayer = 'X';
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let gameActive = false;
+    
+    // VOICE CHAT VARIABLE STACKS
+    let localAudioStream = null;
+    let targetPeerId = null;
+    let micEnabled = false;
+
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const micBtnEl = document.getElementById('micBtn');
+
+    // Generating Grid UI Squares Layout
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.addEventListener('click', () => makeMove(i));
+      boardEl.appendChild(cell);
+    }
+
+    // Capture Local Audio Microphone Permissions Setup Loop
+    async function initializeLocalMicStream() {
+      if (localAudioStream) return true;
+      try {
+        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // Start muted by default until user explicitly taps to turn it ON
+        localAudioStream.getAudioTracks()[0].enabled = false;
+        return true;
+      } catch (err) {
+        alert("Mic open panna permission kudukanum da mapla! Setting la check pannu.");
+        return false;
+      }
+    }
+
+    function createRoom() {
+      player = 'X';
+      const roomId = Math.floor(1000 + Math.random() * 9000).toString();
+      document.getElementById('roomCode').innerText = roomId;
+      showGame();
+      statusEl.innerText = 'Room create aayiduchu. Friend ku number sollu da';
+
+      peer = new Peer('xo-' + roomId); 
+      peer.on('connection', c => {
+        conn = c;
+        targetPeerId = c.peer; // Cache friend's unique peer target address block
+        setupConnection();
+        gameActive = true;
+        statusEl.innerText = 'Friend vandhutan! Nee X. Un Turn da';
+        
+        // Host triggers internal stream system hookups
+        autoEstablishAudioCall();
+      });
+
+      setupVoiceCallListener();
+
+      peer.on('error', err => { alert("Peer engine layout lock error! Refresh."); location.reload(); });
+    }
+
+    function joinRoom() {
+      player = 'O';
+      const roomId = document.getElementById('joinInput').value;
+      if (roomId.length !== 4) return alert('4 digit number correct ah podu da');
+      document.getElementById('roomCode').innerText = roomId;
+      showGame();
+      statusEl.innerText = 'Connecting...';
+
+      peer = new Peer();
+      peer.on('open', () => {
+        targetPeerId = 'xo-' + roomId;
+        conn = peer.connect(targetPeerId); 
+        setupConnection();
+      });
+
+      setupVoiceCallListener();
+    }
+
+    function showGame() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+    }
+
+    function setupConnection() {
+      conn.on('open', () => {
+        gameActive = true;
+        if (player === 'O') statusEl.innerText = 'Connected! Nee O. Host Turn...';
+      });
+      conn.on('data', data => {
+        if (data.type === 'restart') {
+          localResetGame();
+          return;
+        }
+        board = data.board;
+        currentPlayer = data.currentPlayer;
+        gameActive = data.gameActive;
+        updateBoard();
+        updateStatus();
+      });
+      conn.on('close', () => {
+        gameActive = false;
+        statusEl.innerText = 'Friend poitan 😭';
+        stopAllAudioTracks();
+      });
+    }
+
+    // 🔊 VOICE CHAT STREAMING PIPELINE IMPLEMENTATION
+    async function autoEstablishAudioCall() {
+      const permissionGranted = await initializeLocalMicStream();
+      if (!permissionGranted || !targetPeerId) return;
+
+      // Call the opponent peer device directly passing local hardware stream packet
+      const call = peer.call(targetPeerId, localAudioStream);
+      handleIncomingStream(call);
+    }
+
+    function setupVoiceCallListener() {
+      peer.on('call', async call => {
+        const permissionGranted = await initializeLocalMicStream();
+        if (!permissionGranted) return;
+        
+        // Accept incoming voice connection request packet arrays
+        call.answer(localAudioStream);
+        handleIncomingStream(call);
+      });
+    }
+
+    function handleIncomingStream(call) {
+      call.on('stream', remoteStream => {
+        // Prevent creating multiple audio objects if one is already playing
+        if (document.getElementById('remote-audio-player')) return;
+
+        // Dynamic creation of HTML5 Audio node element array to route sound through speakers
+        const audioNode = document.createElement('audio');
+        audioNode.id = 'remote-audio-player';
+        audioNode.srcObject = remoteStream;
+        audioNode.autoplay = true;
+        audioNode.controls = false;
+        document.body.appendChild(audioNode);
+      });
+    }
+
+    // 🎛️ MIC TOGGLE HANDLER (TAP TO ON / TAP TO OFF)
+    async function toggleMicSystem() {
+      const streamReady = await initializeLocalMicStream();
+      if (!streamReady) return;
+
+      micEnabled = !micEnabled;
+      
+      // Toggle hardware track layer stream binary switch values
+      localAudioStream.getAudioTracks()[0].enabled = micEnabled;
+
+      if (micEnabled) {
+        micBtnEl.innerText = "🎙️ Mic: ON (Live)";
+        micBtnEl.classList.add('active');
+        // Trigger call channel handshakes if joining client hasn't initiated it yet
+        if (player === 'O' && conn && conn.open) {
+          autoEstablishAudioCall();
+        }
+      } else {
+        micBtnEl.innerText = "🎙️ Mic: OFF";
+        micBtnEl.classList.remove('active');
+      }
+    }
+
+    function stopAllAudioTracks() {
+      if (localAudioStream) {
+        localAudioStream.getTracks().forEach(track => track.stop());
+      }
+      const playerNode = document.getElementById('remote-audio-player');
+      if (playerNode) playerNode.remove();
+    }
+
+    // GAME GRID CONTROL MATHEMATICS
+    function makeMove(index) {
+      if (!gameActive || board[index] !== '' || currentPlayer !== player) return;
+      board[index] = player;
+      currentPlayer = player === 'X' ? 'O' : 'X';
+      
+      const winner = checkWinner();
+      const draw = !board.includes('');
+      if (winner || draw) gameActive = false;
+
+      if (conn && conn.open) {
+        conn.send({ board, currentPlayer, gameActive });
+      }
+      updateBoard();
+      updateStatus();
+    }
+
+    function updateBoard() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach((cell, i) => {
+        cell.innerText = board[i];
+        cell.style.color = board[i] === 'X' ? '#ff4757' : '#00ff88';
+      });
+    }
+
+    function updateStatus() {
+      const winner = checkWinner();
+      if (winner) {
+        statusEl.innerText = winner === player ? 'Nee Jeyichita! 🎉' : 'Friend jeyichitan 😭';
+        if (navigator.vibrate) navigator.vibrate(200);
+      } else if (!board.includes('')) {
+        statusEl.innerText = 'Draw da!';
+      } else {
+        statusEl.innerText = currentPlayer === player ? 'Un Turn da' : 'Friend Turn...';
+      }
+    }
+
+    function checkWinner() {
+      const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for (let w of wins) {
+        if (board[w[0]] !== '' && board[w[0]] === board[w[1]] && board[w[0]] === board[w[2]]) {
+          return board[w[0]];
+        }
+      }
+      return null;
+    }
+
+    function requestRestart() {
+      if (!conn || !conn.open) return alert("Friend connected ah illa da!");
+      localResetGame();
+      conn.send({ type: 'restart' });
+    }
+
+    function localResetGame() {
+      board = ['', '', '', '', '', '', '', '', ''];
+      currentPlayer = 'X'; 
+      gameActive = true;
+      updateBoard();
+      if (player === 'X') {
+        statusEl.innerText = 'Game Restart aaiduchu! Nee X. Un Turn da';
+      } else {
+        statusEl.innerText = 'Game Restart aaiduchu! Nee O. Host (X) Turn...';
+      }
+    }
+  </script>
+</body>
+</html>

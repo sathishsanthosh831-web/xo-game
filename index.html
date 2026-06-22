@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>X-O Number Room with Voice & Random Start</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      background: #121212; 
+      color: white; 
+      margin: 0; 
+      padding: 20px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    h1 { 
+      color: #00ff88; 
+      text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+      margin-top: 10px;
+    }
+    #menu {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      max-width: 320px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    p { font-size: 16px; color: #b3b3b3; margin: 10px 0; }
+    .board { 
+      display: grid; 
+      grid-template-columns: repeat(3, 90px); 
+      gap: 8px; 
+      margin: 20px auto; 
+      width: 286px; 
+    }
+    .cell { 
+      width: 90px; 
+      height: 90px; 
+      background: #1a1a1a; 
+      border: 2px solid #00ff88; 
+      font-size: 50px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      border-radius: 8px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+      transition: all 0.15s ease;
+      font-weight: bold;
+    }
+    .cell:hover {
+      background: #252525;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+    }
+    button { 
+      background: #00ff88; 
+      color: black; 
+      border: none; 
+      padding: 12px 25px; 
+      font-size: 16px; 
+      margin: 10px 0; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: bold; 
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+    }
+    .control-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      max-width: 200px;
+      margin: 15px auto 0 auto;
+    }
+    .restart-btn {
+      background: #ffd700;
+      color: black;
+      margin: 0;
+    }
+    .restart-btn:hover {
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+    .exit-btn {
+      background: #ff4757;
+      color: white;
+      margin: 0;
+    }
+    .exit-btn:hover {
+      box-shadow: 0 0 15px rgba(255, 71, 87, 0.5);
+    }
+    
+    .mic-btn {
+      background: #2f3542;
+      color: #ff4757;
+      border: 2px solid #ff4757;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .mic-btn.active {
+      background: #2ed573;
+      color: black;
+      border: 2px solid #2ed573;
+      box-shadow: 0 0 15px rgba(46, 213, 115, 0.4);
+    }
+
+    input { 
+      padding: 12px; 
+      font-size: 20px; 
+      width: 100%; 
+      text-align: center; 
+      border-radius: 8px; 
+      border: 2px solid #333; 
+      background: #111;
+      color: white;
+      letter-spacing: 5px; 
+      box-sizing: border-box;
+      outline: none;
+      margin-top: 5px;
+    }
+    input:focus {
+      border-color: #00ff88;
+    }
+    #game {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      width: 100%;
+      max-width: 340px;
+      box-sizing: border-box;
+      margin-top: 15px;
+    }
+    #status { 
+      font-size: 16px; 
+      margin: 15px 0; 
+      min-height: 40px; 
+      font-weight: bold;
+      color: #ffd700;
+    }
+    #roomCode { 
+      font-size: 36px; 
+      color: #00ff88; 
+      font-weight: bold; 
+      letter-spacing: 6px; 
+      margin: 5px 0;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    }
+  </style>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <h1>X-O Game ❌⭕</h1>
+
+  <div id="menu">
+    <button onclick="createRoom()">Create Room</button>
+    <p style="margin: 15px 0; font-weight: bold; color: #555;">─ OR ─</p>
+    <input type="number" id="joinInput" placeholder="1234" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);">
+    <button onclick="joinRoom()" style="background: #00d2ff; color: black;">Join Room</button>
+  </div>
+
+  <div id="game" style="display:none;">
+    <p style="margin-bottom: 0;">Room Number</p>
+    <p id="roomCode"></p>
+    <div id="status">Connecting...</div>
+    <div class="board" id="board"></div>
+    
+    <div class="control-btns">
+      <button onclick="requestRestart()" class="restart-btn">Restart Game</button>
+      <button onclick="location.reload()" class="exit-btn">Exit Game</button>
+      <button id="micBtn" onclick="toggleMicSystem()" class="mic-btn">🎙️ Mic: OFF</button>
+    </div>
+  </div>
+
+  <script>
+    const securityAlert = "Inspect panni pakka vandhingala? Aiyayo en owner romba moola karanga! ungalukku oru option tharan, my owner insta ID tharen: @highpet01. Avan kitta poi vangikonga, but some amount keppan. Avan kitta 'megu' nu sollunga discount pannuvan. Naan dhan sonnan nu sollidathinga! 🙏🤫";
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); alert(securityAlert); });
+    document.onkeydown = function(e) {
+      if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) || (e.ctrlKey && e.keyCode == 85)) {
+        alert(securityAlert); return false;
+      }
+    };
+    setInterval(function() {
+      const startT = +new Date();
+      debugger; 
+      const endT = +new Date();
+      if (endT - startT > 100) { alert(securityAlert); window.location.reload(); }
+    }, 250);
+  </script>
+
+  <script>
+    let peer, conn, player, currentPlayer = 'X';
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let gameActive = false;
+    
+    let localAudioStream = null;
+    let targetPeerId = null;
+    let micEnabled = false;
+
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const micBtnEl = document.getElementById('micBtn');
+
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.addEventListener('click', () => makeMove(i));
+      boardEl.appendChild(cell);
+    }
+
+    async function initializeLocalMicStream() {
+      if (localAudioStream) return true;
+      try {
+        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        localAudioStream.getAudioTracks()[0].enabled = false;
+        return true;
+      } catch (err) {
+        alert("Mic open panna permission kudukanum da mapla! Setting la check pannu.");
+        return false;
+      }
+    }
+
+    function createRoom() {
+      player = 'X';
+      const roomId = Math.floor(1000 + Math.random() * 9000).toString();
+      document.getElementById('roomCode').innerText = roomId;
+      showGame();
+      statusEl.innerText = 'Room create aayiduchu. Friend ku number sollu da';
+
+      peer = new Peer('xo-' + roomId); 
+      peer.on('connection', c => {
+        conn = c;
+        targetPeerId = c.peer;
+        setupConnection();
+        
+        // 🎲 MULTIPLAYER RANDOM TURN TOSS (Only calculated once by Host)
+        currentPlayer = Math.random() < 0.5 ? 'X' : 'O';
+        gameActive = true;
+        
+        // Send initial toss state to friend immediately upon handshake connection
+        setTimeout(() => {
+          if (conn && conn.open) {
+            conn.send({ type: 'toss_init', board, currentPlayer, gameActive });
+          }
+          updateBoard();
+          updateStatus();
+        }, 800);
+
+        autoEstablishAudioCall();
+      });
+
+      setupVoiceCallListener();
+      peer.on('error', err => { alert("Peer setup error! Try unique room."); location.reload(); });
+    }
+
+    function joinRoom() {
+      player = 'O';
+      const roomId = document.getElementById('joinInput').value;
+      if (roomId.length !== 4) return alert('4 digit number correct ah podu da');
+      document.getElementById('roomCode').innerText = roomId;
+      showGame();
+      statusEl.innerText = 'Connecting...';
+
+      peer = new Peer();
+      peer.on('open', () => {
+        targetPeerId = 'xo-' + roomId;
+        conn = peer.connect(targetPeerId); 
+        setupConnection();
+      });
+
+      setupVoiceCallListener();
+    }
+
+    function showGame() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+    }
+
+    function setupConnection() {
+      conn.on('open', () => {
+        // Wait for host to push the live dynamic random toss values
+        statusEl.innerText = 'Connected! Turn choose aaguthu...';
+      });
+      conn.on('data', data => {
+        if (data.type === 'restart') {
+          localResetGame(data.nextStarter);
+          return;
+        }
+        
+        // Listen to host initial random turn sync packet
+        if (data.type === 'toss_init') {
+          currentPlayer = data.currentPlayer;
+          gameActive = data.gameActive;
+          updateBoard();
+          updateStatus();
+          return;
+        }
+        
+        board = data.board;
+        currentPlayer = data.currentPlayer;
+        gameActive = data.gameActive;
+        updateBoard();
+        updateStatus();
+      });
+      conn.on('close', () => {
+        gameActive = false;
+        statusEl.innerText = 'Friend poitan 😭';
+        stopAllAudioTracks();
+      });
+    }
+
+    async function autoEstablishAudioCall() {
+      const permissionGranted = await initializeLocalMicStream();
+      if (!permissionGranted || !targetPeerId) return;
+      const call = peer.call(targetPeerId, localAudioStream);
+      handleIncomingStream(call);
+    }
+
+    function setupVoiceCallListener() {
+      peer.on('call', async call => {
+        const permissionGranted = await initializeLocalMicStream();
+        if (!permissionGranted) return;
+        call.answer(localAudioStream);
+        handleIncomingStream(call);
+      });
+    }
+
+    function handleIncomingStream(call) {
+      call.on('stream', remoteStream => {
+        if (document.getElementById('remote-audio-player')) return;
+        const audioNode = document.createElement('audio');
+        audioNode.id = 'remote-audio-player';
+        audioNode.srcObject = remoteStream;
+        audioNode.autoplay = true;
+        document.body.appendChild(audioNode);
+      });
+    }
+
+    async function toggleMicSystem() {
+      const streamReady = await initializeLocalMicStream();
+      if (!streamReady) return;
+      micEnabled = !micEnabled;
+      localAudioStream.getAudioTracks()[0].enabled = micEnabled;
+      if (micEnabled) {
+        micBtnEl.innerText = "🎙️ Mic: ON (Live)";
+        micBtnEl.classList.add('active');
+        if (player === 'O' && conn && conn.open) autoEstablishAudioCall();
+      } else {
+        micBtnEl.innerText = "🎙️ Mic: OFF";
+        micBtnEl.classList.remove('active');
+      }
+    }
+
+    function stopAllAudioTracks() {
+      if (localAudioStream) localAudioStream.getTracks().forEach(t => t.stop());
+      const pNode = document.getElementById('remote-audio-player');
+      if (pNode) pNode.remove();
+    }
+
+    function makeMove(index) {
+      if (!gameActive || board[index] !== '' || currentPlayer !== player) return;
+      board[index] = player;
+      currentPlayer = player === 'X' ? 'O' : 'X';
+      
+      const winner = checkWinner();
+      const draw = !board.includes('');
+      if (winner || draw) gameActive = false;
+
+      if (conn && conn.open) {
+        conn.send({ board, currentPlayer, gameActive });
+      }
+      updateBoard();
+      updateStatus();
+    }
+
+    function updateBoard() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach((cell, i) => {
+        cell.innerText = board[i];
+        cell.style.color = board[i] === 'X' ? '#ff4757' : '#00ff88';
+      });
+    }
+
+    function updateStatus() {
+      const winner = checkWinner();
+      if (winner) {
+        statusEl.innerText = winner === player ? 'Nee Jeyichita! 🎉' : 'Friend jeyichitan 😭';
+        if (navigator.vibrate) navigator.vibrate(200);
+      } else if (!board.includes('')) {
+        statusEl.innerText = 'Draw da!';
+      } else {
+        statusEl.innerText = currentPlayer === player ? 'Un Turn da' : 'Friend Turn...';
+      }
+    }
+
+    function checkWinner() {
+      const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for (let w of wins) {
+        if (board[w[0]] !== '' && board[w[0]] === board[w[1]] && board[w[0]] === board[w[2]]) {
+          return board[w[0]];
+        }
+      }
+      return null;
+    }
+
+    // RANDOMIZED START EVEN ON RESTART TRIGGERS
+    function requestRestart() {
+      if (!conn || !conn.open) return alert("Friend connected ah illa da!");
+      
+      // Calculate a completely new random starter for the next round
+      const nextStarter = Math.random() < 0.5 ? 'X' : 'O';
+      
+      localResetGame(nextStarter);
+      conn.send({ type: 'restart', nextStarter: nextStarter });
+    }
+
+    function localResetGame(nextStarter) {
+      board = ['', '', '', '', '', '', '', '', ''];
+      currentPlayer = nextStarter; // Assign randomly picked system values
+      gameActive = true;
+      updateBoard();
+      updateStatus();
+    }
+  </script>
+</body>
+</html>
